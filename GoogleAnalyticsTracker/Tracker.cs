@@ -25,6 +25,8 @@ namespace GoogleAnalyticsTracker
         public string Language { get; set; }
         public string UserAgent { get; set; }
         public string CharacterSet { get; set; }
+        public string Campaign { get; set; }
+        public string Source { get; set; }
 
         internal CustomVariable[] CustomVariables { get; set; }
 
@@ -71,13 +73,18 @@ namespace GoogleAnalyticsTracker
 
         private void InitializeCookieVariable()
         {
-            var random = new Random((int)DateTime.UtcNow.Ticks);
-            var cookie = string.Format("{0}{1}", random.Next(100000000, 999999999), "00145214523");
-
-            var randomvalue = random.Next(1000000000, 2147483647).ToString(CultureInfo.InvariantCulture);
+            //https://developers.google.com/analytics/resources/concepts/gaConceptsCookies
+            //http://stackoverflow.com/questions/1027660/generate-google-analytics-events-utm-gif-requests-serverside
+            //should be in this order : utmcid=one|utmcsr=two|utmgclid=three|utmccn=four|utmcmd=five|utmctr=six|utmcct=seven
 
             long ticks = 979899100100100101;
-            _cookieValue = string.Format("__utma=1.{0}.{1}.{2}.{2}.15;+__utmz=1.{2}.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none);", ticks, ticks, ticks);
+
+            string _utma = string.Format("1.{0}.{0}.{0}.{0}.15;+", ticks); //Unique client id (2 Years)
+            string _utmb = ""; //client session id (30 minutes)
+            string _utmz = string.Format("1.{0}.1.1.", ticks); //referrer Id (6 months)
+            string utmcmd = "(none)"; //campaign medium
+
+            _cookieValue = string.Format("__utma={0}__utmz={1}utmcsr=(direct)|utmccn=(direct)|utmcmd={2};", _utma, _utmz, utmcmd);
         }
 
         private string GenerateUtmn()
@@ -93,9 +100,6 @@ namespace GoogleAnalyticsTracker
 
             CustomVariables[position - 1] = new CustomVariable(name, value);
         }
-
-
-        
 
         public void TrackPageView(string pageTitle, string pageUrl)
         {
