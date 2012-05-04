@@ -58,6 +58,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActionTrackingAttribute.cs" />
+    <Compile Include="UtmRequest.cs" />
     <Compile Include="CustomVariable.cs" />
     <Compile Include="Tracker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -65,7 +66,9 @@
     <Compile Include="UtmeGenerator.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="GoogleAnalyticsTracker.nuspec" />
+    <None Include="GoogleAnalyticsTracker.nuspec">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(ProjectDir)\..\.nuget\NuGet.targets" />
