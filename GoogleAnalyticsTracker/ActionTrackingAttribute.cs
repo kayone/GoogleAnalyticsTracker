@@ -17,8 +17,7 @@ namespace GoogleAnalyticsTracker
         {
         }
 
-        public ActionTrackingAttribute(string trackingAccount, string trackingDomain, string actionDescription,
-                                       string actionUrl)
+        public ActionTrackingAttribute(string trackingAccount, string trackingDomain, string actionDescription, string actionUrl)
         {
             Tracker = new Tracker(trackingAccount, trackingDomain);
             ActionDescription = actionDescription;
