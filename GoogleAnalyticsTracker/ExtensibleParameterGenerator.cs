@@ -5,7 +5,10 @@ using System.Text;
 
 namespace GoogleAnalyticsTracker
 {
-    class UtmeGenerator
+    /// <summary>
+    /// Extensible Parameter or utme
+    /// </summary>
+    class ExtensibleParameterGenerator
     {
         private readonly Tracker _tracker;
 
@@ -16,22 +19,15 @@ namespace GoogleAnalyticsTracker
             CustomVariableValue = 9
         }
 
-        public UtmeGenerator(Tracker tracker)
+        public ExtensibleParameterGenerator(Tracker tracker)
         {
             _tracker = tracker;
         }
 
         public string Generate()
         {
-            return GenerateCustomVariables();
-        }
-
-        private string GenerateCustomVariables()
-        {
-            Func<CustomVariable, Func<CustomVariable, string>, string> getProperty =
-                (cv, f) => cv == null ? null : f(cv);
-            Func<Func<CustomVariable, string>, ValueType, string> getValues =
-                (f, type) => SerializeValues(_tracker.CustomVariables.Select(f).ToArray(), type);
+            Func<CustomVariable, Func<CustomVariable, string>, string> getProperty =(cv, f) => cv == null ? null : f(cv);
+            Func<Func<CustomVariable, string>, ValueType, string> getValues = (f, type) => SerializeValues(_tracker.CustomVariables.Select(f).ToArray(), type);
 
             var names = getValues(cv => getProperty(cv, cv1 => cv1.Name), ValueType.CustomVariableName);
 

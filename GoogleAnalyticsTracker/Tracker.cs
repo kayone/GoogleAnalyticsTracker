@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,19 +9,17 @@ using System.Threading.Tasks;
 namespace GoogleAnalyticsTracker
 {
     public class Tracker
-        : IDisposable
     {
         private const string BeaconUrl = "http://www.google-analytics.com/__utm.gif";
         private const string BeaconUrlSsl = "https://ssl.google-analytics.com/_utm.gif";
-        private const string AnalyticsVersion = "4.3"; // Analytics version - AnalyticsVersion
+        private const string AnalyticsVersion = "5.3.0"; // Analytics version - AnalyticsVersion
 
-        private readonly UtmeGenerator _utmeGenerator;
+        private readonly ExtensibleParameterGenerator _extensibleParameterGenerator;
 
-        private string _sessionId; // Session ID - utmhid
         private string _cookieValue; // Cookie related variables - utmcc
 
-        public string TrackingAccount { get; set; } // utmac
-        public string TrackingDomain { get; set; }
+        public string TrackingAccount { get; private set; } // utmac
+        public string TrackingDomain { get; private set; }
 
         public string Hostname { get; set; }
         public string Language { get; set; }
@@ -50,30 +48,26 @@ namespace GoogleAnalyticsTracker
 #endif
             Hostname = hostname;
             Language = "en";
-            UserAgent = string.Format("Tracker/1.0 ({0}; {1}; {2})", Environment.OSVersion.Platform, Environment.OSVersion.Version, osversionstring);
+            UserAgent = string.Format("Tracker/2.0 ({0}; {1}; {2})", Environment.OSVersion.Platform, Environment.OSVersion.Version, osversionstring);
             CookieContainer = new CookieContainer();
 
-            ThrowOnErrors = false;
+            ThrowOnErrors = Debugger.IsAttached;
 
-            InitializeUtmHid();
-            InitializeCharset();
+            CharacterSet = "UTF-8";
             InitializeCookieVariable();
 
             CustomVariables = new CustomVariable[5];
 
-            _utmeGenerator = new UtmeGenerator(this);
+            _extensibleParameterGenerator = new ExtensibleParameterGenerator(this);
         }
 
-        private void InitializeUtmHid()
+
+        private string GetSession()
         {
             var random = new Random((int)DateTime.UtcNow.Ticks);
-            _sessionId = random.Next(100000000, 999999999).ToString(CultureInfo.InvariantCulture);
+            return random.Next(100000000, 999999999).ToString(CultureInfo.InvariantCulture);
         }
 
-        private void InitializeCharset()
-        {
-            CharacterSet = "UTF-8";
-        }
 
         private void InitializeCookieVariable()
         {
@@ -82,7 +76,8 @@ namespace GoogleAnalyticsTracker
 
             var randomvalue = random.Next(1000000000, 2147483647).ToString(CultureInfo.InvariantCulture);
 
-            _cookieValue = string.Format("__utma=1.{0}.{1}.{2}.{2}.15;+__utmz=1.{2}.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none);", cookie, randomvalue, DateTime.UtcNow.Ticks);
+            long ticks = 979899100100100101;
+            _cookieValue = string.Format("__utma=1.{0}.{1}.{2}.{2}.15;+__utmz=1.{2}.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none);", ticks, ticks, ticks);
         }
 
         private string GenerateUtmn()
@@ -99,6 +94,9 @@ namespace GoogleAnalyticsTracker
             CustomVariables[position - 1] = new CustomVariable(name, value);
         }
 
+
+        
+
         public void TrackPageView(string pageTitle, string pageUrl)
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
@@ -108,12 +106,12 @@ namespace GoogleAnalyticsTracker
             parameters.Add("utmcs", CharacterSet);
             parameters.Add("utmul", Language);
             parameters.Add("utmdt", pageTitle);
-            parameters.Add("utmhid", _sessionId);
+            parameters.Add("utmhid", GetSession());
             parameters.Add("utmp", pageUrl);
             parameters.Add("utmac", TrackingAccount);
             parameters.Add("utmcc", _cookieValue);
 
-            var utme = _utmeGenerator.Generate();
+            var utme = _extensibleParameterGenerator.Generate();
             if (!string.IsNullOrEmpty(utme))
                 parameters.Add("utme", utme);
 
@@ -129,12 +127,12 @@ namespace GoogleAnalyticsTracker
             parameters.Add("utmni", "1");
             parameters.Add("utmt", "event");
 
-            var utme = _utmeGenerator.Generate();
+            var utme = _extensibleParameterGenerator.Generate();
             parameters.Add("utme", string.Format("5({0}*{1}*{2})(3)", category, action, label, value) + utme);
 
             parameters.Add("utmcs", CharacterSet);
             parameters.Add("utmul", Language);
-            parameters.Add("utmhid", _sessionId);
+            parameters.Add("utmhid", GetSession());
             parameters.Add("utmac", TrackingAccount);
             parameters.Add("utmcc", _cookieValue);
 
@@ -150,7 +148,7 @@ namespace GoogleAnalyticsTracker
             parameters.Add("utmt", "event");
             parameters.Add("utmcs", CharacterSet);
             parameters.Add("utmul", Language);
-            parameters.Add("utmhid", _sessionId);
+            parameters.Add("utmhid", GetSession());
             parameters.Add("utmac", TrackingAccount);
             parameters.Add("utmcc", _cookieValue);
 
@@ -169,7 +167,7 @@ namespace GoogleAnalyticsTracker
         private void RequestUrlAsync(string url, Dictionary<string, string> parameters)
         {
             // Create GET string
-            StringBuilder data = new StringBuilder();
+            var data = new StringBuilder();
             foreach (var parameter in parameters)
             {
                 data.Append(string.Format("{0}={1}&", parameter.Key, Uri.EscapeDataString(parameter.Value)));
@@ -201,38 +199,5 @@ namespace GoogleAnalyticsTracker
                                       }
                                   });
         }
-
-        #region IDisposable Members
-
-        private bool disposed;
-
-        private void Dispose(bool disposing)
-        {
-            if (disposed)
-            {
-                return;
-            }
-
-            if (disposing)
-            {
-                //TODO: Managed cleanup code here, while managed refs still valid
-            }
-            //TODO: Unmanaged cleanup code here
-
-            disposed = true;
-        }
-
-        public void Dispose()
-        {
-            // Call the private Dispose(bool) helper and indicate 
-            // that we are explicitly disposing
-            this.Dispose(true);
-
-            // Tell the garbage collector that the object doesn't require any
-            // cleanup when collected since Dispose was called explicitly.
-            GC.SuppressFinalize(this);
-        }
-
-        #endregion
     }
 }
